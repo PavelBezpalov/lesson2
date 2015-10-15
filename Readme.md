@@ -2,7 +2,7 @@ Readme
 -
 
 1. Fork the repo: ![fork](http://kodi.wiki/images/d/d8/Github_fork.jpg)
-2. `git clone git@github.com:(username)/lesson1.git ~/lesson2`
+2. `git clone git@github.com:(username)/lesson2.git ~/lesson2`
 3. `cd ~/lesson2`
 4. `sudo apt-get install bundler` in case when bundler was not installed
 5. `bundle`
@@ -14,7 +14,7 @@ Readme
 Tasks
 -
 
-1 Реалізувати `Magic 8 ball`
+1 Реалізувати [`Magic 8 ball`](https://ru.wikipedia.org/wiki/Magic_8_ball)
 -
 - Створити класс `Ball`
 - Реалізувати метод `shake`, який виводить відповідь в тому кольорі як на вікіпедії і повертає відповідь як `String`.
