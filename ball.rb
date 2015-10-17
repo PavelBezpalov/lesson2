@@ -2,11 +2,11 @@ require 'yaml'
 
 class Ball
   ANSWERS = YAML.load_file(File.join(__dir__, './answers.yml'))
+  ANSWERS_PER_COLOR = 5
+  COLORS = [31, 32, 33, 34]
 
   def color(answer)
-    [4, 9, 14, 19].inject(35) do |color, value|
-      color - ((0..value).cover?(ANSWERS.index(answer)) ? 1 : 0)
-    end
+    COLORS[ANSWERS.index(answer) / ANSWERS_PER_COLOR]
   end
 
   def shake
