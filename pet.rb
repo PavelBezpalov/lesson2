@@ -1,26 +1,34 @@
 class Pet
+  PETS = [{ type: 'firebug' },
+          { type: 'space chicken' },
+          { type: 'chocolate puppy' },
+          { type: 'sugarbelly' },
+          { type: 'vile hamster' }
+         ]
+
   def initialize(name)
     @name = name
-    @type = :dragon
+    @pet = PETS.sample
     @asleep = false
-    @happiness = 10
-    @stuff_in_intestine = 0
+    @doody = false
+    @dirty = false
+    @fat = 0
+    @fun = 10
     @food = 0
     @health = 10
     @energy = 10
-    @fun = 8
-    puts "#{@name} is born."
+    puts "#{@name} is born. It is a #{@pet[:type]}!"
   end
 
   def feed
     puts "You feed #{@name}."
-    @happiness = 10
+    @fun = 10
     passage_of_time
   end
 
   def walk
     puts "You walk #{@name}."
-    @stuff_in_intestine = 0
+    @food = 0
     passage_of_time
   end
 
@@ -55,11 +63,11 @@ class Pet
   private
 
   def hungry?
-    @happiness <= 2
+    @fun <= 2
   end
 
   def poopy?
-    @stuff_in_intestine >= 8
+    @food >= 8
   end
 
   def wake_up_suddenly
@@ -69,8 +77,8 @@ class Pet
   end
 
   def poop_or_alert
-    if @stuff_in_intestine >= 10
-      @stuff_in_intestine = 0
+    if @food >= 10
+      @food = 0
       puts "Whoops! #{@name} had an accident..."
     elsif hungry?
       wake_up_suddenly
@@ -82,9 +90,9 @@ class Pet
   end
 
   def passage_of_time
-    if @happiness > 0
-      @happiness -= 1
-      @stuff_in_intestine += 1
+    if @fun > 0
+      @fun -= 1
+      @food += 1
     else
       wake_up_suddenly
       puts "#{@name} is starving! In desperation, he ate YOU!"
