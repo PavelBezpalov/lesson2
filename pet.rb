@@ -1,26 +1,31 @@
+require 'colorize'
+
 module Interface
   MESSAGES = { invalid_command: 'Huh? Please type one of the commands.' }
-  COLORS = { red: 31, green: 32, yellow: 33, blue: 34, magenta: 35,
-             cyan: 36, white: 37 }
   OBJ = Object.new
 
   private
 
   def stats_color(value)
     if value <= 2
-      COLORS[:red]
+      :red
     elsif value <= 5
-      COLORS[:yellow]
+      :yellow
     else
-      COLORS[:green]
+      :green
     end
   end
 
   def stats
-    "\e[#{stats_color(@food)}mFOOD #{@food}\e[0m | " \
-      "\e[#{stats_color(@health)}mHEALTH #{@health}\e[0m | " \
-      "\e[#{stats_color(@fun)}mFUN #{@fun}\e[0m | " \
-      "\e[#{stats_color(@energy)}mENERGY #{@energy}\e[0m"
+    if @asleep
+      status = "#{'SLEEP'.colorize(:light_blue)} | " \
+    else
+      status = "#{'ACTIVE'.colorize(:light_green)} | " \
+    end
+    "#{status}#{'FOOD'.colorize(stats_color(@food))} | " \
+      "#{'HEALTH'.colorize(stats_color(@health))} | " \
+      "#{'FUN'.colorize(stats_color(@fun))} | " \
+      "#{'ENERGY'.colorize(stats_color(@energy))}"
   end
 
   def clear_screen
@@ -29,19 +34,20 @@ module Interface
 
   def special_events
     message = []
-    message.push("\e[#{COLORS[:red]}m#{@name} is pooped. \e[0m") if doody?
-    message.push("\e[#{COLORS[:red]}m#{@name} is dirty. \e[0m") if dirty?
-    message.push("\e[#{COLORS[:red]}m#{@name} is hungry. \e[0m") if hungry?
-    message.push("\e[#{COLORS[:red]}m#{@name} is tired. \e[0m") if tired?
-    message.push("\e[#{COLORS[:red]}m#{@name} is sad. \e[0m") if sad?
-    message.push("\e[#{COLORS[:red]}m#{@name} is ill. \e[0m") if ill?
+    message.push('doody') if doody?
+    message.push('dirty') if dirty?
+    message.push('hungry') if hungry?
+    message.push('tired') if tired?
+    message.push('sad') if sad?
+    message.push('ill') if ill?
     message
   end
 
   def text
-    puts "\e[#{COLORS[:cyan]}m#{@name} - the #{@pet[:type]}\e[0m"
+    puts "#{@name} - the #{@pet[:type]}".colorize(:light_cyan)
     puts stats
-    puts special_events
+    puts special_events.join(' | ').colorize(:light_red) unless
+        special_events.empty?
     puts @event_message
     print 'enter command: '
   end
@@ -97,6 +103,7 @@ module GameTime
       @energy = change_value(@energy, :down)
     end
     wake_up if @energy == 10
+    doody!
     leave if @health == 0
   end
 
@@ -114,7 +121,7 @@ module GameTime
   end
 
   def born
-    @event_message = "\e[#{COLORS[:green]}m#{@name} is born!\e[0m"
+    @event_message = "#{@name} is born!".colorize(:light_green)
     interface
   end
 
@@ -125,7 +132,7 @@ module GameTime
 
   def leave
     clear_screen
-    puts "\e[#{COLORS[:red]}m#{@name} ran away from you\e[0m"
+    puts "#{@name} ran away from you".colorize(:light_red)
     exit
   end
 end
@@ -151,21 +158,22 @@ class Pet
   end
 
   def feed
+    wake_up
     if @food < 10
       @food = change_value(@food, :up)
-      msg = "\e[#{COLORS[:green]}mYou feed #{@name}.\e[0m"
+      msg = "You feed #{@name}.".colorize(:light_green)
       doody!
     else
-      msg = "\e[#{COLORS[:yellow]}m#{@name} dont want to eat.\e[0m"
+      msg = "#{@name} dont want to eat.".colorize(:light_yellow)
     end
     trigger_event(msg)
   end
 
   def clean
     if doody? || dirty?
-      msg = "\e[#{COLORS[:green]}m#{@name} is clean now!\e[0m"
+      msg = "#{@name} is clean now!".colorize(:light_green)
     else
-      msg = "\e[#{COLORS[:green]}m#{@name} is cleaner now!\e[0m"
+      msg = "#{@name} is cleaner now!".colorize(:light_yellow)
     end
     @doody, @dirty = false
     trigger_event(msg)
@@ -173,19 +181,20 @@ class Pet
 
   def help
     commands = methods - OBJ.methods
-    msg = "\e[#{COLORS[:green]}mAvaible commands:" \
-          "\n#{commands.sort.join(', ')}.\e[0m"
+    msg = "Available commands:\n#{commands.sort.join(', ')}."
+          .colorize(:light_green)
     trigger_event(msg)
   end
 
   def walk
+    wake_up
     if @energy > 0
-      msg = "\e[#{COLORS[:green]}mYou walk with #{@name}.\e[0m"
+      msg = "You walk with #{@name}.".colorize(:light_green)
       @fun = change_value(@fun, :up)
       @energy = change_value(@energy, :down)
       dirty!
     else
-      msg = "\e[#{COLORS[:yellow]}m#{@name} dont want to walk.\e[0m"
+      msg = "#{@name} dont want to walk.".colorize(:light_yellow)
     end
     trigger_event(msg)
   end
@@ -193,34 +202,36 @@ class Pet
   def tobed
     if @energy < 10
       @asleep = true
-      msg = "\e[#{COLORS[:green]}m#{@name} is sleeping.\e[0m"
+      msg = "#{@name} is sleeping.".colorize(:light_green)
     else
-      msg = "\e[#{COLORS[:yellow]}m#{@name} dont want to sleep.\e[0m"
+      msg = "#{@name} dont want to sleep.".colorize(:light_yellow)
     end
     trigger_event(msg)
   end
 
   def toss
+    wake_up
     if @energy > 0
-      msg = "\e[#{COLORS[:green]}mYou toss #{@name} up into the air.\e[0m"
+      msg = "You toss #{@name} up into the air.".colorize(:light_green)
       @fun = change_value(@fun, :up)
       @energy = change_value(@energy, :down)
       dirty!
     else
-      msg = "\e[#{COLORS[:yellow]}mNo time to toss.\e[0m"
+      msg = 'No time to toss.'.colorize(:light_yellow)
     end
     trigger_event(msg)
   end
 
   def ball
+    wake_up
     if @energy > 0
-      msg = "\e[#{COLORS[:green]}mYou threw the ball and #{@name} brought " \
-            "him back\e[0m"
+      msg = "You threw the ball and #{@name} brought him back"
+            .colorize(:light_green)
       @fun = change_value(@fun, :up)
       @energy = change_value(@energy, :down)
       dirty!
     else
-      msg = "\e[#{COLORS[:yellow]}mNo time to play ball.\e[0m"
+      msg = 'No time to play ball.'.colorize(:light_yellow)
     end
     trigger_event(msg)
   end
@@ -261,10 +272,9 @@ class Pet
   end
 
   def doody!
-    unless doody? && @food >= 1
-      @doody = true if rand(10).odd?
-      dirty!
-    end
+    return if doody? && @food < 1
+    @doody = true if rand(10).odd?
+    dirty!
   end
 
   def dirty?
@@ -278,7 +288,7 @@ class Pet
   def wake_up
     return unless @asleep
     @asleep = false
-    msg = "\e[#{COLORS[:green]}m#{@name} wakes up!\e[0m"
+    msg = "#{@name} wakes up!".colorize(:light_green)
     trigger_event(msg)
   end
 end
