@@ -1,34 +1,12 @@
 require 'colorize'
+require 'yaml'
 
 class Pet
-  MESSAGES = { invalid_command: 'Huh? Please type one of the commands.' }
-  PETS = [{ type: 'Firebug',
-            watch: ['bathed in lava...',
-                    'shoots laser in intruders!',
-                    'reads your mind...'],
-            leave: 'laser shot you and left the hideout!' },
-          { type: 'Space Chicken',
-            watch: ['dragged bomb...',
-                    'pecks cashew.',
-                    'flaps its wings.'],
-            leave: 'called another 500 chickens and they pecked you!' },
-          { type: 'Chocolate Puppy',
-            watch: ['eating its own tail.',
-                    'barking at Emotion Lord!',
-                    'playing hide and seek.'],
-            leave: 'ate itself...' },
-          { type: 'Sugarbelly',
-            watch: ['singing wondrous songs!',
-                    'angry at the girls!',
-                    'moves planets...'],
-            leave: 'returned to his tribe.' },
-          { type: 'Vile Hamster',
-            watch: ['starting to doubt the worm.',
-                    'doesnt want any more dreams...',
-                    'joined the sect.'],
-            leave: 'left at the call of the Worm.' }
-         ]
-  OBJ = Object.new
+  DummyObject = Object.new
+
+  DATA = YAML.load_file('./data.yml')
+  MESSAGES = DATA[:messages]
+  PETS = DATA[:pets]
   MINUTES_PER_TIME = 3
 
   def initialize(name)
@@ -45,88 +23,56 @@ class Pet
     wake_up
     if @food < 10
       @food = change_value(@food, :up)
-      msg = "You feed #{@name}.".colorize(:light_green)
+      @event_message = "You feed #{@name}.".colorize(:light_green)
       doody!
     else
-      msg = "#{@name} dont want to eat.".colorize(:light_yellow)
+      @event_message = "#{@name} dont want to eat.".colorize(:light_yellow)
     end
-    trigger_event(msg)
   end
 
   def clean
     if doody? || dirty?
-      msg = "#{@name} is clean now!".colorize(:light_green)
+      @event_message = "#{@name} is clean now!".colorize(:light_green)
     else
-      msg = "#{@name} is cleaner now!".colorize(:light_yellow)
+      @event_message = "#{@name} is cleaner now!".colorize(:light_yellow)
     end
     @doody, @dirty = false
-    trigger_event(msg)
   end
 
   def help
-    commands = methods - OBJ.methods
-    msg = "Available commands:\n#{commands.sort.join(', ')}."
-          .colorize(:light_green)
-    trigger_event(msg)
-  end
-
-  def walk
-    wake_up
-    if @energy > 0
-      msg = "You walk with #{@name}.".colorize(:light_green)
-      @fun = change_value(@fun, :up)
-      @energy = change_value(@energy, :down)
-      dirty!
-    else
-      msg = "#{@name} dont want to walk.".colorize(:light_yellow)
-    end
-    trigger_event(msg)
+    commands = methods - DummyObject.methods
+    @event_message = "Available commands:\n#{commands.sort.join(', ')}" \
+                     ', exit.'.colorize(:light_green)
   end
 
   def tobed
     if @energy < 10
       @asleep = true
-      msg = "#{@name} is sleeping.".colorize(:light_green)
+      @event_message = "#{@name} is sleeping.".colorize(:light_green)
     else
-      msg = "#{@name} dont want to sleep.".colorize(:light_yellow)
+      @event_message = "#{@name} dont want to sleep.".colorize(:light_yellow)
     end
-    trigger_event(msg)
   end
 
-  def toss
+  def play
     wake_up
     if @energy > 0
-      msg = "You toss #{@name} up into the air.".colorize(:light_green)
+      @event_message = "You threw the ball and #{@name} brought it back."
+                       .colorize(:light_green)
       @fun = change_value(@fun, :up)
       @energy = change_value(@energy, :down)
       dirty!
     else
-      msg = 'No time to toss.'.colorize(:light_yellow)
+      @event_message = 'No time to play ball.'.colorize(:light_yellow)
     end
-    trigger_event(msg)
-  end
-
-  def ball
-    wake_up
-    if @energy > 0
-      msg = "You threw the ball and #{@name} brought him back"
-            .colorize(:light_green)
-      @fun = change_value(@fun, :up)
-      @energy = change_value(@energy, :down)
-      dirty!
-    else
-      msg = 'No time to play ball.'.colorize(:light_yellow)
-    end
-    trigger_event(msg)
   end
 
   def watch
     wake_up
-    msg = "#{@name} #{@pet[:watch].sample}".colorize(:light_green)
+    @event_message = "#{@name} #{@pet[:watch].sample}".colorize(:light_green)
     @fun = change_value(@fun, :up)
     @energy = change_value(@energy, :down)
     dirty!
-    trigger_event(msg)
   end
 
   private
@@ -178,27 +124,29 @@ class Pet
     @dirty = true if rand(10).odd?
   end
 
+  def can_ill?
+    @dirty || @doody || sad? || hungry? || tired?
+  end
+
   def wake_up
     return unless @asleep
     @asleep = false
-    msg = "#{@name} wakes up!".colorize(:light_green)
-    trigger_event(msg)
+    @event_message = "#{@name} wakes up!".colorize(:light_green)
   end
 
   def time_passed?
     (Time.new - @tracktime) / 60.0 > MINUTES_PER_TIME
   end
 
-  def time_passed!
+  def change_values
     @fun = change_value(@fun, :down)
     @food = change_value(@food, :down)
-    @health = change_value(@health, :down) if @dirty || @doody || sad? ||
-                                              hungry? || tired?
-    if @asleep
-      @energy = change_value(@energy, :up)
-    else
-      @energy = change_value(@energy, :down)
-    end
+    @health = change_value(@health, :down) if can_ill?
+    @energy = change_value(@energy, :up) if @asleep
+  end
+
+  def time_passed!
+    change_values
     wake_up if @energy == 10
     doody!
     leave if @health == 0
@@ -222,10 +170,6 @@ class Pet
     @tracktime ||= Time.new
     @redraw ||= false
     interface
-  end
-
-  def trigger_event(message)
-    @event_message = message
   end
 
   def leave
@@ -285,7 +229,7 @@ class Pet
   end
 
   def valid_command?(command)
-    self.respond_to?(command) && !OBJ.respond_to?(command)
+    self.respond_to?(command) && !DummyObject.respond_to?(command)
   end
 
   def prompt
@@ -295,7 +239,7 @@ class Pet
       if valid_command?(input)
         send input
       else
-        trigger_event(MESSAGES[:invalid_command])
+        @event_message = MESSAGES[:invalid_command]
       end
       @redraw = true
       Thread.exit

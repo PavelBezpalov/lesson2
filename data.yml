@@ -1,0 +1,36 @@
+---
+:messages:
+  :invalid_command: |-
+    Huh? Please type one of the
+    commands.
+:pets:
+- :type: Firebug
+  :watch:
+  - bathed in lava...
+  - shoots laser in intruders!
+  - reads your mind...
+  :leave: laser shot you and left the hideout!
+- :type: Space Chicken
+  :watch:
+  - dragged bomb...
+  - pecks cashew.
+  - flaps its wings.
+  :leave: called another 500 chickens and they pecked you!
+- :type: Chocolate Puppy
+  :watch:
+  - eating its own tail.
+  - barking at Emotion Lord!
+  - playing hide and seek.
+  :leave: ate itself...
+- :type: Sugarbelly
+  :watch:
+  - singing wondrous songs!
+  - angry at the girls!
+  - moves planets...
+  :leave: returned to his tribe.
+- :type: Vile Hamster
+  :watch:
+  - starting to doubt the worm.
+  - doesnt want any more dreams...
+  - joined the sect.
+  :leave: left at the call of the Worm.
