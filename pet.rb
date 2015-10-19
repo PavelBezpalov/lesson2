@@ -27,9 +27,20 @@ module Interface
     print `(clear)`
   end
 
+  def special_events
+    message = []
+    message.push("\e[#{COLORS[:red]}m#{@name} is pooped. \e[0m") if doody?
+    message.push("\e[#{COLORS[:red]}m#{@name} is dirty. \e[0m") if dirty?
+    message.push("\e[#{COLORS[:red]}m#{@name} is hungry. \e[0m") if hungry?
+    message.push("\e[#{COLORS[:red]}m#{@name} is tired. \e[0m") if tired?
+    message.push("\e[#{COLORS[:red]}m#{@name} is sad. \e[0m") if sad?
+    message.push("\e[#{COLORS[:red]}m#{@name} is ill. \e[0m") if ill?
+    message
+  end
+
   def text
     puts "#{@name}:#{@pet[:type]} #{stats}"
-    puts 'special events'
+    puts special_events
     puts @event_message
     print 'enter command: '
   end
@@ -64,7 +75,7 @@ module Interface
 end
 
 module GameTime
-  MINUTES_PER_TIME = 5
+  MINUTES_PER_TIME = 0.1
 
   private
 
@@ -75,7 +86,8 @@ module GameTime
   def time_passed!
     @fun = change_value(@fun, :down)
     @food = change_value(@food, :down)
-    @health = change_value(@health, :down) if @dirty || @doody
+    @health = change_value(@health, :down) if @dirty || @doody || sad? ||
+                                              hungry? || tired?
     @energy = change_value(@energy, :down)
   end
 
@@ -102,7 +114,7 @@ class Pet
           { type: 'chocolate puppy' },
           { type: 'sugarbelly' },
           { type: 'vile hamster' }
-         ]
+          ]
 
   def initialize(name)
     @name = name
@@ -118,6 +130,7 @@ class Pet
     if @food < 10
       @food = change_value(@food, :up)
       feed_succ = "You feed #{@name}."
+      doody!
       trigger_event(feed_succ)
     else
       feed_fail = "#{@name} dont want to eat."
@@ -128,6 +141,7 @@ class Pet
   def walk
     puts "You walk #{@name}."
     @fun = change_value(@fun, :up)
+    dirty!
   end
 
   def tobed
@@ -160,40 +174,56 @@ class Pet
 
   def change_value(value, how)
     if how == :up
-      @health += rand(1)
+      @health += rand(3)
       value += rand(1..3)
     elsif how == :down
       value -= rand(3)
     end
     @health = 10 if @health > 10
-    value > 10 ? 10 : value
+    return 10 if value > 10
+    return 0 if value < 0
+    value
   end
 
   def hungry?
     @food <= 2
   end
 
-  def poopy?
-    @food >= 5
+  def tired?
+    @energy == 0
   end
 
-  def wake_up_suddenly
+  def sad?
+    @fun == 0
+  end
+
+  def ill?
+    @health <= 2
+  end
+
+  def doody?
+    @doody ||= false
+  end
+
+  def doody!
+    unless doody? && @food >= 1
+      @doody = [true, false].sample
+      dirty!
+    end
+  end
+
+  def dirty?
+    @dirty ||= false
+  end
+
+  def dirty!
+    @dirty = [true, false].sample
+  end
+
+  def wake_up
     return unless @asleep
     @asleep = false
     puts 'He wakes up suddenly!'
-  end
-
-  def poop_or_alert
-    if @food >= 10
-      @food = 0
-      puts "Whoops! #{@name} had an accident..."
-    elsif hungry?
-      wake_up_suddenly
-      puts "#{@name}'s stomach grumbles..."
-    elsif poopy?
-      wake_up_suddenly
-      puts "#{@name} does the potty dance..."
-    end
   end
 
   def born
