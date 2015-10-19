@@ -129,13 +129,28 @@ class Pet
   def feed
     if @food < 10
       @food = change_value(@food, :up)
-      feed_succ = "You feed #{@name}."
+      msg = "You feed #{@name}."
       doody!
-      trigger_event(feed_succ)
     else
-      feed_fail = "#{@name} dont want to eat."
-      trigger_event(feed_fail)
+      msg = "#{@name} dont want to eat."
     end
+    trigger_event(msg)
+  end
+
+  def clean
+    if doody? || dirty?
+      msg = "#{@name} is clean now!"
+    else
+      msg = "#{@name} is cleaner now!"
+    end
+    @doody, @dirty = false
+    trigger_event(msg)
+  end
+
+  def help
+    commands = methods - OBJ.methods
+    msg = "Avaible commands: #{commands.sort.join(', ')}"
+    trigger_event(msg)
   end
 
   def walk
