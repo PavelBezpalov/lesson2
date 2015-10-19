@@ -39,7 +39,8 @@ module Interface
   end
 
   def text
-    puts "#{@name}:#{@pet[:type]} #{stats}"
+    puts "\e[#{COLORS[:cyan]}m#{@name} - the #{@pet[:type]}\e[0m"
+    puts stats
     puts special_events
     puts @event_message
     print 'enter command: '
@@ -75,7 +76,9 @@ module Interface
 end
 
 module GameTime
-  MINUTES_PER_TIME = 0.1
+  include Interface
+
+  MINUTES_PER_TIME = 3
 
   private
 
@@ -88,7 +91,13 @@ module GameTime
     @food = change_value(@food, :down)
     @health = change_value(@health, :down) if @dirty || @doody || sad? ||
                                               hungry? || tired?
-    @energy = change_value(@energy, :down)
+    if @asleep
+      @energy = change_value(@energy, :up)
+    else
+      @energy = change_value(@energy, :down)
+    end
+    wake_up if @energy == 10
+    leave if @health == 0
   end
 
   def time
@@ -103,18 +112,33 @@ module GameTime
       next
     end
   end
+
+  def born
+    @event_message = "\e[#{COLORS[:green]}m#{@name} is born!\e[0m"
+    interface
+  end
+
+  def trigger_event(message)
+    @event_message = message
+    interface
+  end
+
+  def leave
+    clear_screen
+    puts "\e[#{COLORS[:red]}m#{@name} ran away from you\e[0m"
+    exit
+  end
 end
 
 class Pet
   include GameTime
-  include Interface
 
-  PETS = [{ type: 'firebug' },
-          { type: 'space chicken' },
-          { type: 'chocolate puppy' },
-          { type: 'sugarbelly' },
-          { type: 'vile hamster' }
-          ]
+  PETS = [{ type: 'Firebug' },
+          { type: 'Space Chicken' },
+          { type: 'Chocolate Puppy' },
+          { type: 'Sugarbelly' },
+          { type: 'Vile Hamster' }
+         ]
 
   def initialize(name)
     @name = name
@@ -129,19 +153,19 @@ class Pet
   def feed
     if @food < 10
       @food = change_value(@food, :up)
-      msg = "You feed #{@name}."
+      msg = "\e[#{COLORS[:green]}mYou feed #{@name}.\e[0m"
       doody!
     else
-      msg = "#{@name} dont want to eat."
+      msg = "\e[#{COLORS[:yellow]}m#{@name} dont want to eat.\e[0m"
     end
     trigger_event(msg)
   end
 
   def clean
     if doody? || dirty?
-      msg = "#{@name} is clean now!"
+      msg = "\e[#{COLORS[:green]}m#{@name} is clean now!\e[0m"
     else
-      msg = "#{@name} is cleaner now!"
+      msg = "\e[#{COLORS[:green]}m#{@name} is cleaner now!\e[0m"
     end
     @doody, @dirty = false
     trigger_event(msg)
@@ -149,40 +173,56 @@ class Pet
 
   def help
     commands = methods - OBJ.methods
-    msg = "Avaible commands: #{commands.sort.join(', ')}"
+    msg = "\e[#{COLORS[:green]}mAvaible commands:" \
+          "\n#{commands.sort.join(', ')}.\e[0m"
     trigger_event(msg)
   end
 
   def walk
-    puts "You walk #{@name}."
-    @fun = change_value(@fun, :up)
-    dirty!
+    if @energy > 0
+      msg = "\e[#{COLORS[:green]}mYou walk with #{@name}.\e[0m"
+      @fun = change_value(@fun, :up)
+      @energy = change_value(@energy, :down)
+      dirty!
+    else
+      msg = "\e[#{COLORS[:yellow]}m#{@name} dont want to walk.\e[0m"
+    end
+    trigger_event(msg)
   end
 
   def tobed
-    puts "You put #{@name} to bed."
     if @energy < 10
       @asleep = true
-      puts @name + ' is sleeping.'
+      msg = "\e[#{COLORS[:green]}m#{@name} is sleeping.\e[0m"
     else
-      puts "#{@name} dont want to sleep."
+      msg = "\e[#{COLORS[:yellow]}m#{@name} dont want to sleep.\e[0m"
     end
+    trigger_event(msg)
   end
 
   def toss
-    puts "You toss #{@name} up into the air."
-    puts 'He giggles, which singes your eyebrows.'
-    time
+    if @energy > 0
+      msg = "\e[#{COLORS[:green]}mYou toss #{@name} up into the air.\e[0m"
+      @fun = change_value(@fun, :up)
+      @energy = change_value(@energy, :down)
+      dirty!
+    else
+      msg = "\e[#{COLORS[:yellow]}mNo time to toss.\e[0m"
+    end
+    trigger_event(msg)
   end
 
-  def rock
-    puts "You rock #{@name} gently."
-    @asleep = true
-    puts 'He briefly dozes off...'
-    time
-    return unless @asleep
-    @asleep = false
-    puts '...but wakes when you stop.'
+  def ball
+    if @energy > 0
+      msg = "\e[#{COLORS[:green]}mYou threw the ball and #{@name} brought " \
+            "him back\e[0m"
+      @fun = change_value(@fun, :up)
+      @energy = change_value(@energy, :down)
+      dirty!
+    else
+      msg = "\e[#{COLORS[:yellow]}mNo time to play ball.\e[0m"
+    end
+    trigger_event(msg)
   end
 
   private
@@ -222,7 +262,7 @@ class Pet
 
   def doody!
     unless doody? && @food >= 1
-      @doody = [true, false].sample
+      @doody = true if rand(10).odd?
       dirty!
     end
   end
@@ -232,22 +272,14 @@ class Pet
   end
 
   def dirty!
-    @dirty = [true, false].sample
+    @dirty = true if rand(10).odd?
   end
 
   def wake_up
     return unless @asleep
     @asleep = false
-    puts 'He wakes up suddenly!'
-  end
-
-  def born
-    interface
-  end
-
-  def trigger_event(message)
-    @event_message = message
-    interface
+    msg = "\e[#{COLORS[:green]}m#{@name} wakes up!\e[0m"
+    trigger_event(msg)
   end
 end
 
