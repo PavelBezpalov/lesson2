@@ -2,11 +2,11 @@ require 'colorize'
 
 class Pet
   MESSAGES = { invalid_command: 'Huh? Please type one of the commands.' }
-  PETS = [{ type: 'Firebug' ,
+  PETS = [{ type: 'Firebug',
             watch: ['bathed in lava...',
                     'shoots laser in intruders!',
                     'reads your mind...'],
-            leave: 'laser shot you and left the hideout!'},
+            leave: 'laser shot you and left the hideout!' },
           { type: 'Space Chicken',
             watch: ['dragged bomb...',
                     'pecks cashew.',
@@ -23,7 +23,7 @@ class Pet
                     'moves planets...'],
             leave: 'returned to his tribe.' },
           { type: 'Vile Hamster',
-            watch: ['never doubt the worm!',
+            watch: ['starting to doubt the worm.',
                     'doesnt want any more dreams...',
                     'joined the sect.'],
             leave: 'left at the call of the Worm.' }
@@ -165,7 +165,7 @@ class Pet
   end
 
   def doody!
-    return if doody? && @food < 1
+    return unless !doody? && @food >= 1
     @doody = true if rand(10).odd?
     dirty!
   end
@@ -185,7 +185,6 @@ class Pet
     trigger_event(msg)
   end
 
-
   def time_passed?
     (Time.new - @tracktime) / 60.0 > MINUTES_PER_TIME
   end
@@ -194,7 +193,7 @@ class Pet
     @fun = change_value(@fun, :down)
     @food = change_value(@food, :down)
     @health = change_value(@health, :down) if @dirty || @doody || sad? ||
-        hungry? || tired?
+                                              hungry? || tired?
     if @asleep
       @energy = change_value(@energy, :up)
     else
@@ -203,29 +202,30 @@ class Pet
     wake_up if @energy == 10
     doody!
     leave if @health == 0
+    @redraw = true
   end
 
   def time
-    @tracktime ||= Time.new
     born
     loop do
       if time_passed?
         time_passed!
-        interface
         @tracktime = Time.new
       end
+      interface if @redraw
       next
     end
   end
 
   def born
     @event_message = "#{@name} is born!".colorize(:light_green)
+    @tracktime ||= Time.new
+    @redraw ||= false
     interface
   end
 
   def trigger_event(message)
     @event_message = message
-    interface
   end
 
   def leave
@@ -248,12 +248,12 @@ class Pet
     if @asleep
       status = "#{'SLEEP'.colorize(:light_blue)} | " \
     else
-                                                           status = "#{'ACTIVE'.colorize(:light_green)} | " \
+      status = "#{'ACTIVE'.colorize(:light_green)} | " \
     end
     "#{status}#{'FOOD'.colorize(stats_color(@food))} | " \
-      "#{'HEALTH'.colorize(stats_color(@health))} | " \
-      "#{'FUN'.colorize(stats_color(@fun))} | " \
-      "#{'ENERGY'.colorize(stats_color(@energy))}"
+    "#{'HEALTH'.colorize(stats_color(@health))} | " \
+    "#{'FUN'.colorize(stats_color(@fun))} | " \
+    "#{'ENERGY'.colorize(stats_color(@energy))}"
   end
 
   def clear_screen
@@ -277,16 +277,11 @@ class Pet
     puts stats
     puts '-' * 40
     puts special_events.join(' | ').colorize(:light_red) unless
-        special_events.empty?
+    special_events.empty?
     puts '-' * 40
     puts @event_message
     puts '-' * 40
     print 'enter command: '
-  end
-
-  def clean_threads
-    thread_list = Thread.list
-    Thread.kill(thread_list[2]) if thread_list.size == 3
   end
 
   def valid_command?(command)
@@ -294,8 +289,7 @@ class Pet
   end
 
   def prompt
-    clean_threads
-    Thread.new do
+    @prompt_tread = Thread.new do
       input = gets.chomp
       exit if input == 'exit'
       if valid_command?(input)
@@ -303,10 +297,18 @@ class Pet
       else
         trigger_event(MESSAGES[:invalid_command])
       end
+      @redraw = true
+      Thread.exit
     end
   end
 
+  def kill_prompt_thread
+    @prompt_tread.kill if @prompt_tread.is_a?(Thread)
+  end
+
   def interface
+    @redraw = false
+    kill_prompt_thread
     clear_screen
     text
     prompt
