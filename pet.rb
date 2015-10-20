@@ -27,228 +27,60 @@ module EventText
   end
 end
 
-class Pet
+module Interface
   include EventText
 
   DummyObject = Object.new
 
-  MINUTES_PER_TIME = 3
-
-  def initialize(name)
-    @name = name
-    @pet = PETS.sample
-    @fun = 10
-    @food = 0
-    @health = 10
-    @energy = 10
-    time
-  end
-
-  def feed
-    wake_up
-    if @food < 10
-      @food = change_value(@food, :up)
-      global_message(:feed_succ, @name)
-      doody!
-    else
-      global_message(:feed_fail, @name)
-    end
-  end
-
-  def clean
-    if doody? || dirty?
-      global_message(:clean_succ, @name)
-    else
-      global_message(:clean_fail, @name)
-    end
-    @doody, @dirty = false
-  end
-
-  def help
-    commands = methods - DummyObject.methods
-    global_message(:help_succ, commands.sort.join(', '))
-  end
-
-  def tobed
-    if @energy < 10
-      @asleep = true
-      global_message(:tobed_succ, @name)
-    else
-      global_message(:tobed_fail, @name)
-    end
-  end
-
-  def play
-    wake_up
-    if @energy > 0
-      global_message(:play_succ, @name)
-      @fun = change_value(@fun, :up)
-      @energy = change_value(@energy, :down)
-      dirty!
-    else
-      global_message(:play_fail, @name)
-    end
-  end
-
-  def watch
-    wake_up
-    pet_spec_message(:watch_succ, @name)
-    @fun = change_value(@fun, :up)
-    @energy = change_value(@energy, :down)
-    dirty!
-  end
-
   private
 
-  def change_value(value, how)
-    if how == :up
-      @health += rand(3)
-      value += rand(1..3)
-    elsif how == :down
-      value -= rand(3)
+  def stat_with_color(value)
+    if value[1] <= 2
+      color = :red
+    elsif value[1] <= 5
+      color = :yellow
+    else
+      color = :green
     end
-    @health = 10 if @health > 10
-    return 10 if value > 10
-    return 0 if value < 0
-    value
+    value[0].to_s.upcase.colorize(color)
   end
 
-  def hungry?
-    @food <= 2
+  def sleep_state(cond)
+    if cond
+      'SLEEP'.colorize(:light_blue)
+    else
+      'ACTIVE'.colorize(:light_green)
+    end
   end
 
-  def tired?
-    @energy == 0
-  end
-
-  def sad?
-    @fun == 0
-  end
-
-  def ill?
-    @health <= 2
-  end
-
-  def doody?
-    @doody ||= false
-  end
-
-  def doody!
-    return unless !doody? && @food >= 1
-    @doody = true if rand(10).odd?
-    dirty!
-  end
-
-  def dirty?
-    @dirty ||= false
-  end
-
-  def dirty!
-    @dirty = true if rand(10).odd?
-  end
-
-  def can_ill?
-    @dirty || @doody || sad? || hungry? || tired?
-  end
-
-  def wake_up
-    return unless @asleep
-    @asleep = false
-    global_message(:wakeup_succ, @name)
-  end
-
-  def time_passed?
-    @tracktime ||= Time.new
-    (Time.new - @tracktime) / 60.0 > MINUTES_PER_TIME
-  end
-
-  def change_values
-    @fun = change_value(@fun, :down)
-    @food = change_value(@food, :down)
-    @health = change_value(@health, :down) if can_ill?
-    @energy = change_value(@energy, :up) if @asleep
-  end
-
-  def time_passed!
-    change_values
-    wake_up if @energy == 10
-    doody!
-    leave if @health == 0
-    @redraw = true
-  end
-
-  def time
-    born
-    loop do
-      if time_passed?
-        time_passed!
-        @tracktime = Time.new
+  def stats_text(params)
+    stats_str = params.to_a.each_with_object([]) do |item, stats|
+      if item[0] != :sleep
+        stats.push(stat_with_color(item))
+      else
+        stats.unshift(sleep_state(item[1]))
       end
-      interface if @redraw
-      next
+      stats
     end
+    stats_str.join(' | ')
   end
 
-  def born
-    global_message(:born_succ, @name)
-    @redraw ||= false
-    interface
-  end
-
-  def leave
-    clear_screen
-    pet_spec_message(:leave_err, @name)
-    puts @event_message
-    exit
-  end
-
-  def stats_color(value)
-    if value <= 2
-      :red
-    elsif value <= 5
-      :yellow
-    else
-      :green
+  def alerts_text(alerts)
+    alerts_str = alerts.to_a.each_with_object([]) do |item, arr|
+      arr.push(item[0].to_s.capitalize) if item[1]
+      arr
     end
+    alerts_str.join(' | ').colorize(:light_red)
   end
 
-  def stats
-    if @asleep
-      status = "#{'SLEEP'.colorize(:light_blue)} | " \
-    else
-      status = "#{'ACTIVE'.colorize(:light_green)} | " \
+  def text(name, type, params, alerts)
+    ["#{name} - the #{type}".colorize(:light_cyan),
+     stats_text(params),
+     alerts_text(alerts),
+     @event_message].each do |item|
+      puts item
+      puts '-' * 40
     end
-    "#{status}#{'FOOD'.colorize(stats_color(@food))} | " \
-    "#{'HEALTH'.colorize(stats_color(@health))} | " \
-    "#{'FUN'.colorize(stats_color(@fun))} | " \
-    "#{'ENERGY'.colorize(stats_color(@energy))}"
-  end
-
-  def clear_screen
-    print `(clear)`
-  end
-
-  def special_events
-    message = []
-    message.push('Doody') if doody?
-    message.push('Dirty') if dirty?
-    message.push('Hungry') if hungry?
-    message.push('Tired') if tired?
-    message.push('Sad') if sad?
-    message.push('Ill') if ill?
-    message
-  end
-
-  def text
-    puts "#{@name} - the #{@pet[:type]}".colorize(:light_cyan)
-    puts '-' * 40
-    puts stats
-    puts '-' * 40
-    puts special_events.join(' | ').colorize(:light_red) unless
-    special_events.empty?
-    puts '-' * 40
-    puts @event_message
-    puts '-' * 40
     print 'enter command: '
   end
 
@@ -260,11 +92,7 @@ class Pet
     @prompt_tread = Thread.new do
       input = gets.chomp
       exit if input == 'exit'
-      if valid_command?(input)
-        send input
-      else
-        global_message(:command_err)
-      end
+      valid_command?(input) ? send(input) : global_message(:command_err)
       @redraw = true
       Thread.exit
     end
@@ -274,12 +102,185 @@ class Pet
     @prompt_tread.kill if @prompt_tread.is_a?(Thread)
   end
 
-  def interface
+  def clear_screen
+    print `(clear)`
+  end
+
+  def interface(name, type, params, alerts)
     @redraw = false
     kill_prompt_thread
     clear_screen
-    text
+    text(name, type, params, alerts)
     prompt
+  end
+end
+
+module GameTime
+  MINUTES_PER_TIME = 3
+
+  private
+
+  def can_ill?
+    @alerts[:dirty] || @alerts[:doody] || @alerts[:sad] || @alerts[:hungry] ||
+      @alerts[:tired]
+  end
+
+  def time_passed?
+    @tracktime ||= Time.new
+    (Time.new - @tracktime) / 60.0 > MINUTES_PER_TIME
+  end
+
+  def change_values!
+    change_param!(:fun, :down)
+    change_param!(:food, :down)
+    change_param!(:health, :down) if can_ill?
+    change_param!(:energy, :up) if @params[:sleep]
+  end
+
+  def time_passed!
+    change_values!
+    wake_up! if @params[:energy] == 10
+    doody!
+    leave if @params[:health] == 0
+    @redraw = true
+  end
+
+  def time
+    born
+    loop do
+      interface(@name, @pet[:type], @params, @alerts) if @redraw
+      next unless time_passed?
+      time_passed!
+      @tracktime = Time.new
+    end
+  end
+
+  def born
+    global_message(:born_succ, @name)
+    @redraw ||= false
+    interface(@name, @pet[:type], @params, @alerts)
+  end
+
+  def leave
+    clear_screen
+    pet_spec_message(:leave_err, @name)
+    puts @event_message
+    exit
+  end
+end
+
+class Pet
+  include Interface
+  include GameTime
+
+  def initialize(name)
+    @name = name
+    @pet = PETS.sample
+    @params = { food: 0, health: 10, fun: 10, energy: 10, sleep: false }
+    @alerts = { doody: false, dirty: false, hungry: true, ill: false,
+                sad: false, tired: false }
+    time
+  end
+
+  def feed
+    wake_up!
+    if @params[:food] < 10
+      change_param!(:food, :up)
+      global_message(:feed_succ, @name)
+      doody!
+    else
+      global_message(:feed_fail, @name)
+    end
+  end
+
+  def clean
+    if @alerts[:doody] || @alerts[:dirty]
+      global_message(:clean_succ, @name)
+    else
+      global_message(:clean_fail, @name)
+    end
+    @alerts[:doody], @alerts[:dirty] = false
+  end
+
+  def help
+    commands = methods - DummyObject.methods
+    global_message(:help_succ, commands.sort.join(', '))
+  end
+
+  def tobed
+    if @params[:energy] < 10
+      @params[:sleep] = true
+      global_message(:tobed_succ, @name)
+    else
+      global_message(:tobed_fail, @name)
+    end
+  end
+
+  def play
+    wake_up!
+    if @params[:energy] > 0
+      global_message(:play_succ, @name)
+      change_param!(:fun, :up)
+      change_param!(:energy, :down)
+      dirty!
+    else
+      global_message(:play_fail, @name)
+    end
+  end
+
+  def watch
+    wake_up!
+    pet_spec_message(:watch_succ, @name)
+    change_param!(:fun, :up)
+    change_param!(:energy, :down)
+    dirty!
+  end
+
+  private
+
+  def change_param!(value, how)
+    if how == :up
+      @params[:health] += rand(3)
+      @params[value] += rand(1..3)
+    elsif how == :down
+      @params[value] -= rand(3)
+    end
+    normalize_params!
+    set_alerts!
+  end
+
+  def normalize_params!
+    @params.each do |key, value|
+      next if key == :sleep
+      if value > 10
+        @params[key] = 10
+      elsif value < 0
+        @params[key] = 0
+      end
+    end
+  end
+
+  def set_alerts!
+    @alerts[:hungry] = @params[:food] <= 2 ? true : false
+    @alerts[:tired] = @params[:energy] == 0 ? true : false
+    @alerts[:sad] = @params[:fun] == 0 ? true : false
+    @alerts[:ill] = @params[:health] <= 2 ? true : false
+  end
+
+  def doody!
+    return unless !@alerts[:doody] && @params[:food] >= 1
+    @alerts[:doody] = true if rand(10).odd?
+    dirty!
+  end
+
+  def dirty!
+    @alerts[:dirty] = true if rand(10).odd?
+  end
+
+  def wake_up!
+    return unless @params[:sleep]
+    @params[:sleep] = false
+    global_message(:wakeup_succ, @name)
   end
 end
 
