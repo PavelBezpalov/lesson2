@@ -1,12 +1,37 @@
 require 'colorize'
 require 'yaml'
 
-class Pet
-  DummyObject = Object.new
-
+module EventText
   DATA = YAML.load_file('./data.yml')
   MESSAGES = DATA[:messages]
   PETS = DATA[:pets]
+
+  private
+
+  def message_colors(key)
+    return :light_red if key.to_s.end_with?('err')
+    return :light_green if key.to_s.end_with?('succ')
+    :light_yellow if key.to_s.end_with?('fail')
+  end
+
+  def global_message(key, var = nil)
+    @event_message = MESSAGES[key] % var
+    @event_message = @event_message.colorize(message_colors(key))
+  end
+
+  def pet_spec_message(key, var)
+    message = @pet[key].sample if @pet[key].is_a?(Array)
+    message = @pet[key] if @pet[key].is_a?(String)
+    @event_message = ('%s ' + message) % var
+    @event_message = @event_message.colorize(message_colors(key))
+  end
+end
+
+class Pet
+  include EventText
+
+  DummyObject = Object.new
+
   MINUTES_PER_TIME = 3
 
   def initialize(name)
@@ -23,53 +48,51 @@ class Pet
     wake_up
     if @food < 10
       @food = change_value(@food, :up)
-      @event_message = "You feed #{@name}.".colorize(:light_green)
+      global_message(:feed_succ, @name)
       doody!
     else
-      @event_message = "#{@name} dont want to eat.".colorize(:light_yellow)
+      global_message(:feed_fail, @name)
     end
   end
 
   def clean
     if doody? || dirty?
-      @event_message = "#{@name} is clean now!".colorize(:light_green)
+      global_message(:clean_succ, @name)
     else
-      @event_message = "#{@name} is cleaner now!".colorize(:light_yellow)
+      global_message(:clean_fail, @name)
     end
     @doody, @dirty = false
   end
 
   def help
     commands = methods - DummyObject.methods
-    @event_message = "Available commands:\n#{commands.sort.join(', ')}" \
-                     ', exit.'.colorize(:light_green)
+    global_message(:help_succ, commands.sort.join(', '))
   end
 
   def tobed
     if @energy < 10
       @asleep = true
-      @event_message = "#{@name} is sleeping.".colorize(:light_green)
+      global_message(:tobed_succ, @name)
     else
-      @event_message = "#{@name} dont want to sleep.".colorize(:light_yellow)
+      global_message(:tobed_fail, @name)
     end
   end
 
   def play
     wake_up
     if @energy > 0
-      @event_message = "You threw the ball and #{@name} brought it back."
-                       .colorize(:light_green)
+      global_message(:play_succ, @name)
       @fun = change_value(@fun, :up)
       @energy = change_value(@energy, :down)
       dirty!
     else
-      @event_message = 'No time to play ball.'.colorize(:light_yellow)
+      global_message(:play_fail, @name)
     end
   end
 
   def watch
     wake_up
-    @event_message = "#{@name} #{@pet[:watch].sample}".colorize(:light_green)
+    pet_spec_message(:watch_succ, @name)
     @fun = change_value(@fun, :up)
     @energy = change_value(@energy, :down)
     dirty!
@@ -131,10 +154,11 @@ class Pet
   def wake_up
     return unless @asleep
     @asleep = false
-    @event_message = "#{@name} wakes up!".colorize(:light_green)
+    global_message(:wakeup_succ, @name)
   end
 
   def time_passed?
+    @tracktime ||= Time.new
     (Time.new - @tracktime) / 60.0 > MINUTES_PER_TIME
   end
 
@@ -166,15 +190,15 @@ class Pet
   end
 
   def born
-    @event_message = "#{@name} is born!".colorize(:light_green)
-    @tracktime ||= Time.new
+    global_message(:born_succ, @name)
     @redraw ||= false
     interface
   end
 
   def leave
     clear_screen
-    puts "#{@name} #{@pet[:leave]}".colorize(:light_red)
+    pet_spec_message(:leave_err, @name)
+    puts @event_message
     exit
   end
 
@@ -239,7 +263,7 @@ class Pet
       if valid_command?(input)
         send input
       else
-        @event_message = MESSAGES[:invalid_command]
+        global_message(:command_err)
       end
       @redraw = true
       Thread.exit

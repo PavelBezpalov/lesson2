@@ -1,36 +1,47 @@
 ---
 :messages:
-  :invalid_command: |-
-    Huh? Please type one of the
-    commands.
+  :command_err: Huh? Please type one of the commands.
+  :feed_succ: You feed %s.
+  :feed_fail: "%s dont want to eat."
+  :clean_succ: "%s is clean now!"
+  :clean_fail: "%s is cleaner now!"
+  :help_succ: |-
+    Available commands:
+    %s, exit.
+  :tobed_succ: "%s is sleeping."
+  :tobed_fail: "%s dont want to sleep."
+  :play_succ: You threw the ball and %s brought it back.
+  :play_fail: No time to play ball.
+  :wakeup_succ: "%s wakes up!"
+  :born_succ: "%s is born!"
 :pets:
 - :type: Firebug
-  :watch:
+  :watch_succ:
   - bathed in lava...
   - shoots laser in intruders!
   - reads your mind...
-  :leave: laser shot you and left the hideout!
+  :leave_err: laser shot you and left the hideout!
 - :type: Space Chicken
-  :watch:
+  :watch_succ:
   - dragged bomb...
   - pecks cashew.
   - flaps its wings.
-  :leave: called another 500 chickens and they pecked you!
+  :leave_err: called another 500 chickens and they pecked you!
 - :type: Chocolate Puppy
-  :watch:
+  :watch_succ:
   - eating its own tail.
   - barking at Emotion Lord!
   - playing hide and seek.
-  :leave: ate itself...
+  :leave_err: ate itself...
 - :type: Sugarbelly
-  :watch:
+  :watch_succ:
   - singing wondrous songs!
   - angry at the girls!
   - moves planets...
-  :leave: returned to his tribe.
+  :leave_err: returned to his tribe.
 - :type: Vile Hamster
-  :watch:
+  :watch_succ:
   - starting to doubt the worm.
   - doesnt want any more dreams...
   - joined the sect.
-  :leave: left at the call of the Worm.
+  :leave_err: left at the call of the Worm.
