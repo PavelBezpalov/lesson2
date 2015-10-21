@@ -89,17 +89,15 @@ module Interface
   end
 
   def prompt
-    @prompt_tread = Thread.new do
-      input = gets.chomp
-      exit if input == 'exit'
-      valid_command?(input) ? send(input) : global_message(:command_err)
-      @redraw = true
-      Thread.exit
+    @prompt_thread ||= Thread.new do
+      loop do
+        input = gets.chomp
+        exit if input == 'exit'
+        valid_command?(input) ? send(input) : global_message(:command_err)
+        @redraw = true
+      end
     end
-  end
-
-  def kill_prompt_thread
-    @prompt_tread.kill if @prompt_tread.is_a?(Thread)
+    @prompt_thread.run
   end
 
   def clear_screen
@@ -108,7 +106,6 @@ module Interface
 
   def interface(name, type, params, alerts)
     @redraw = false
-    kill_prompt_thread
     clear_screen
     text(name, type, params, alerts)
     prompt
